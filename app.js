@@ -1,9 +1,44 @@
+const GAME_STATUS_INIT = 0;
+const GAME_STATUS_MOVING = 1;
+const GAME_STATUS_CHECK_WIN = 2;
+const ACTUAL_NUMBERS_OF_ICON = 5;
 const BET_AMOUNT = [1, 2, 5, 10];
+const AXE = '1_axe';
+const HOOK = '2_hook';
+const FIRE = '3_fire';
+const ICEMAN = '4_iceman';
+const MAN = '5_man';
+const KING = '6_K';
+const QUEEN = '7_Q';
+const JACK = '8_J';
+const iconMap = {
+  1:AXE,
+  2:HOOK,
+  3:FIRE,
+  4:ICEMAN,
+  5:MAN,
+  6:KING,
+  7:QUEEN,
+  8:JACK
+};
+const reels = [
+    [1,5,2,1,6,5,8,5,1,2,3,7,4,5,8,1,4,3,2,5,6],
+    [5,1,6,3,7,8,1,3,2,4,6,8,5,4,5,3,8,7,5,4,1,7,4,8,4],
+    [8,4,1,3,2,6,7,2,3,4,1,5,6,7,8,2,5,4,3,1,2,7,6,7,1,4,3,2,4],
+    [1,7,4,2,3,8,4,3,2,5,6,7,2,3,4,5,8,1,2,6,2,4,2,6,3,7,8,4,6,2,3,1,2,5,6,3,4],
+    [8,5,1]
+];
+const reelsPointer = [0,0,0,0,0];
+const slotSprite = [];
+
 
 let betAmountIndex = 0;
-let j,man,bet,spin,balance,win;
+let gameStatus = GAME_STATUS_INIT;
+let bet,spin,balance,win;
 let balanceAmount = 500;
 let winAmount = 0;
+const spinSpeed = 15;
+
 
 const stage = new PIXI.Container();
 
@@ -13,41 +48,104 @@ const renderer = PIXI.autoDetectRenderer(window.innerWidth, window.innerHeight, 
 });
 document.getElementById('main').appendChild(renderer.view);
 
-PIXI.loader
-  .add("J", 'assets/8_J.png')
-  .add("man", 'assets/5_man.png')
-  .load(setup);
+const texture = new PIXI.RenderTexture(
+        new PIXI.BaseRenderTexture(128, 384, PIXI.SCALE_MODES.LINEAR, 1)
+);
 
-function animationLoop(){
-  requestAnimationFrame(animationLoop);
-  man.x = 500
-  man.y = 500
-  man.anchor.set(0.5, 0.5);
-  man.rotation += 0.01;
-  renderer.render(stage);
-}
+PIXI.loader.load(setup);
+
+
 function setup(){
-  j = new PIXI.Sprite(
-    PIXI.loader.resources["J"].texture
-  );
-  man = new PIXI.Sprite(
-    PIXI.loader.resources["man"].texture
-  );
-
-  man.x = 500
-  man.y = 500
-
   spin = createSpinComponent();
   bet = createBetComponent();
   balance = createBalanceComponent();
   win = createWinComponent();
-  stage.addChild(j);
-  stage.addChild(man);
+  createReelsComponent();
   stage.addChild(spin);
   stage.addChild(bet);
   stage.addChild(balance);
   stage.addChild(win);
-  animationLoop();
+  for(let i=0; i<reels.length; i++){
+    renderer.render(slotSprite[i], texture);
+  }
+  draw();
+}
+
+function draw(){
+  if (gameStatus == GAME_STATUS_MOVING){
+    for(let i=0; i<slotSprite.length; i++) {
+      for(let j=0; j<ACTUAL_NUMBERS_OF_ICON; j++){
+        slotSprite[i].children[j].y -= spinSpeed;
+      }
+    }
+    for(let i=0; i<slotSprite.length; i++) {
+      if (slotSprite[i].children[0].y < -128) {
+        slotSprite[i].children[0].destroy();
+        reelsPointer[i] += 1;
+        const newTile = makeTile(i, reelsPointer[i]+4);
+        newTile.y = slotSprite[i].children[0].y + 128*4;
+        slotSprite[i].addChild(newTile);
+      }
+    }
+  }
+  renderer.render(stage);
+  requestAnimationFrame(draw);
+}
+
+//reels
+function createReelsComponent(){
+  for(let i=0; i<reels.length; i++){
+    slotSprite[i] = makeReel(i);
+    const topCover = new PIXI.Graphics();
+    topCover.beginFill(0xFFFFFF);
+    topCover.drawRect(250*(i+1) + 30,-6,128,256);
+    topCover.endFill();
+    const bottomCover = new PIXI.Graphics();
+    bottomCover.beginFill(0xFFFFFF);
+    bottomCover.drawRect(250*(i+1) + 30,634,128,256);
+    bottomCover.endFill();
+    stage.addChild( slotSprite[i] );
+    stage.addChild( topCover );
+    stage.addChild( bottomCover );
+  }
+}
+
+//make individuel reel
+function makeReel(reelNumber){
+  const pointer = reelsPointer[reelNumber];
+  const reel = new PIXI.Container();
+  const tile1 = makeTile(reelNumber, pointer);
+  const tile2 = makeTile(reelNumber, pointer+1);
+  const tile3 = makeTile(reelNumber, pointer+2);
+  const tile4 = makeTile(reelNumber, pointer+3);
+  const tile5 = makeTile(reelNumber, pointer+4);
+  tile1.y = -128
+  tile3.y = 128;
+  tile4.y = 256;
+  tile5.y = 384;
+  reel.addChild(tile1);
+  reel.addChild(tile2);
+  reel.addChild(tile3);
+  reel.addChild(tile4);
+  reel.addChild(tile5);
+  reel.x = 250*(reelNumber+1) + 30;
+  reel.y = 250;
+  return reel;
+}
+
+//make individuel tile
+function makeTile(reelNumber, position){
+  if (position >  reels[reelNumber].length - 1){
+    return getIcon(iconMap[reels[reelNumber][position%reels[reelNumber].length]]);
+  } else {
+    return getIcon(iconMap[reels[reelNumber][position]]);
+
+  }
+}
+
+//fetch icon
+function getIcon(name){
+  return PIXI.Sprite.fromImage(`assets/${name}.png`);
 }
 
 //Spin button
@@ -109,7 +207,7 @@ function createBetComponent(){
     bet.addChild(minusButton);
     bet.position.set(50 , window.innerHeight - 100);
     return bet;
-}
+};
 
 //Balance
 function createBalanceComponent(){
@@ -153,8 +251,9 @@ function createWinComponent(){
 
 //TODO spin click event
 function spinEvent(eventData){
-    // eventData.target.children[0].setText("aaaa");
-    console.log("aaa");
+    if (gameStatus == GAME_STATUS_INIT || gameStatus == GAME_STATUS_CHECK_WIN){
+      gameStatus = GAME_STATUS_MOVING;
+    }
 }
 
 //change bet amount event
@@ -168,7 +267,7 @@ function changeBetEvent(eventData){
       betAmountIndex-=1;
     }
   }
-  bet.children[1].setText(`$${formatMoney(BET_AMOUNT[betAmountIndex])}`);
+  bet.children[1].text = `$${formatMoney(BET_AMOUNT[betAmountIndex])}`;
 }
 
 //convert a number to a readable money format
