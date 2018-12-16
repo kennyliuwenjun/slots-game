@@ -28,17 +28,27 @@ const reels = [
     [1,7,4,2,3,8,4,3,2,5,6,7,2,3,4,5,8,1,2,6,2,4,2,6,3,7,8,4,6,2,3,1,2,5,6,3,4],
     [8,5,1]
 ];
-const reelsPointer = [0,0,0,0,0];
+
+const winPattern = [
+  [2,2,2,2,2],
+  [1,1,1,1,1],
+  [3,3,3,3,3],
+  [2,3,4,3,2],
+  []
+]
+
 const slotSprite = [];
 
 
 let betAmountIndex = 0;
 let gameStatus = GAME_STATUS_INIT;
 let bet,spin,balance,win;
-let balanceAmount = 500;
+let balanceAmount = 600;
 let winAmount = 0;
-const spinSpeed = 15;
-
+const spinSpeed = 100;
+let randomResult;
+let reelsPointer = [0,0,0,0,0];
+let adjustPositionStatus;
 
 const stage = new PIXI.Container();
 
@@ -65,17 +75,25 @@ function setup(){
   stage.addChild(bet);
   stage.addChild(balance);
   stage.addChild(win);
-  for(let i=0; i<reels.length; i++){
-    renderer.render(slotSprite[i], texture);
-  }
   draw();
 }
 
 function draw(){
   if (gameStatus == GAME_STATUS_MOVING){
     for(let i=0; i<slotSprite.length; i++) {
-      for(let j=0; j<ACTUAL_NUMBERS_OF_ICON; j++){
-        slotSprite[i].children[j].y -= spinSpeed;
+      if (randomResult[i] > 0) {
+        for(let j=0; j<ACTUAL_NUMBERS_OF_ICON; j++){
+          slotSprite[i].children[j].y -= spinSpeed;
+        }
+        randomResult[i] -= spinSpeed;
+      } else {
+        adjustPosition(i);
+        if(adjustPositionStatus.every((res)=>{ return res==true })){
+          reelsPointer = reelsPointer.map((pointer,reel)=>{
+            return pointer%reels[reel].length;
+          })
+          gameStatus = GAME_STATUS_CHECK_WIN;
+        }
       }
     }
     for(let i=0; i<slotSprite.length; i++) {
@@ -87,6 +105,8 @@ function draw(){
         slotSprite[i].addChild(newTile);
       }
     }
+  } else if (gameStatus == GAME_STATUS_CHECK_WIN){
+    
   }
   renderer.render(stage);
   requestAnimationFrame(draw);
@@ -107,6 +127,7 @@ function createReelsComponent(){
     stage.addChild( slotSprite[i] );
     stage.addChild( topCover );
     stage.addChild( bottomCover );
+    renderer.render(slotSprite[i], texture);
   }
 }
 
@@ -135,12 +156,17 @@ function makeReel(reelNumber){
 
 //make individuel tile
 function makeTile(reelNumber, position){
+  let icon;
   if (position >  reels[reelNumber].length - 1){
-    return getIcon(iconMap[reels[reelNumber][position%reels[reelNumber].length]]);
+    icon = reels[reelNumber][position%reels[reelNumber].length]
   } else {
-    return getIcon(iconMap[reels[reelNumber][position]]);
-
+    icon = reels[reelNumber][position]
   }
+  const tile = getIcon(iconMap[icon])
+  if (icon > 5){
+    tile.x = 22.5;
+  }
+  return tile
 }
 
 //fetch icon
@@ -209,7 +235,7 @@ function createBetComponent(){
     return bet;
 };
 
-//Balance
+//Balance part
 function createBalanceComponent(){
     const balanceText = new PIXI.Text("Balance",{fontSize: 24, fill : "white"});
     balanceText.anchor.set(0.5, 0.5);
@@ -229,7 +255,7 @@ function createBalanceComponent(){
     return balance;
 }
 
-//Win
+//Win part
 function createWinComponent(){
     const wineText = new PIXI.Text("Win",{fontSize: 24, fill : "white"});
     wineText.anchor.set(0.5, 0.5);
@@ -252,25 +278,41 @@ function createWinComponent(){
 //TODO spin click event
 function spinEvent(eventData){
     if (gameStatus == GAME_STATUS_INIT || gameStatus == GAME_STATUS_CHECK_WIN){
+      console.log('game start')
+      randomResult = getRandomFinishPosition();
+      adjustPositionStatus = [false,false,false,false,false];
       gameStatus = GAME_STATUS_MOVING;
     }
 }
 
 //change bet amount event
 function changeBetEvent(eventData){
-  if (eventData.target.children[0]._text == '+'){
-    if(betAmountIndex<BET_AMOUNT.length-1){
-      betAmountIndex+=1
+  if(gameStatus != GAME_STATUS_MOVING){
+    if (eventData.target.children[0]._text == '+'){
+      if(betAmountIndex<BET_AMOUNT.length-1){
+        betAmountIndex+=1
+      }
+    } else {
+      if(betAmountIndex>0){
+        betAmountIndex-=1;
+      }
     }
-  } else {
-    if(betAmountIndex>0){
-      betAmountIndex-=1;
-    }
+    bet.children[1].text = `$${formatMoney(BET_AMOUNT[betAmountIndex])}`;
   }
-  bet.children[1].text = `$${formatMoney(BET_AMOUNT[betAmountIndex])}`;
 }
 
-//convert a number to a readable money format
+function adjustPosition(reel){
+  if (randomResult[reel]<=0 && adjustPositionStatus[reel]==false){
+    for(let i=0; i<slotSprite[reel].children.length; i++){
+      slotSprite[reel].children[i].y -= 1;
+    }
+    if (slotSprite[reel].children[2].y <= 128){
+      adjustPositionStatus[reel] = true;
+    }
+  }
+}
+
+//convert a number to a readable money format (from StackOverFlow)
 function formatMoney(amount, decimalCount = 2, decimal = ".", thousands = ",") {
   try {
     decimalCount = Math.abs(decimalCount);
@@ -286,3 +328,12 @@ function formatMoney(amount, decimalCount = 2, decimal = ".", thousands = ",") {
     console.log(e)
   }
 };
+
+
+function getRandomInt(min, max) {
+    return Math.floor(Math.random() * (max - min + 1)) + min;
+}
+
+function getRandomFinishPosition(){
+  return [getRandomInt(10000,20000), getRandomInt(20000,30000), getRandomInt(30000,40000), getRandomInt(40000,50000), getRandomInt(50000,60000)]
+}
