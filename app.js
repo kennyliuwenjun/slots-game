@@ -2,6 +2,9 @@ const GAME_STATUS_INIT = 0;
 const GAME_STATUS_MOVING = 1;
 const GAME_STATUS_CHECK_WIN = 2;
 const ACTUAL_NUMBERS_OF_ICON = 5;
+const THREE_KIND = 3;
+const FOUR_KIND = 4;
+const FIVE_KIND = 5;
 const BET_AMOUNT = [1, 2, 5, 10];
 const AXE = '1_axe';
 const HOOK = '2_hook';
@@ -30,12 +33,60 @@ const reels = [
 ];
 
 const winPattern = [
-  [2,2,2,2,2],
   [1,1,1,1,1],
-  [3,3,3,3,3],
-  [2,3,4,3,2],
-  []
+  [0,0,0,0,0],
+  [2,2,2,2,2],
+  [0,1,2,1,2],
+  [2,1,0,1,2]
 ]
+
+const odds = {
+  1:{
+    3:250,
+    4:500,
+    5:1000
+  },
+  2:{
+    3:200,
+    4:450,
+    5:800
+  },
+  3:{
+    3:150,
+    4:400,
+    5:700
+  },
+  4:{
+    3:100,
+    4:350,
+    5:600
+  },
+  5:{
+    3:90,
+    4:300,
+    5:700
+  },
+  5:{
+    3:90,
+    4:300,
+    5:700
+  },
+  6:{
+    3:80,
+    4:250,
+    5:600
+  },
+  7:{
+    3:70,
+    4:200,
+    5:500
+  },
+  8:{
+    3:60,
+    4:100,
+    5:400
+  }
+};
 
 const slotSprite = [];
 
@@ -43,12 +94,13 @@ const slotSprite = [];
 let betAmountIndex = 0;
 let gameStatus = GAME_STATUS_INIT;
 let bet,spin,balance,win;
-let balanceAmount = 600;
+let balanceAmount = 500;
 let winAmount = 0;
 const spinSpeed = 100;
 let randomResult;
 let reelsPointer = [0,0,0,0,0];
 let adjustPositionStatus;
+let result = [];
 
 const stage = new PIXI.Container();
 
@@ -71,12 +123,14 @@ function setup(){
   balance = createBalanceComponent();
   win = createWinComponent();
   createReelsComponent();
+
   stage.addChild(spin);
   stage.addChild(bet);
   stage.addChild(balance);
   stage.addChild(win);
   draw();
 }
+
 
 function draw(){
   if (gameStatus == GAME_STATUS_MOVING){
@@ -89,9 +143,7 @@ function draw(){
       } else {
         adjustPosition(i);
         if(adjustPositionStatus.every((res)=>{ return res==true })){
-          reelsPointer = reelsPointer.map((pointer,reel)=>{
-            return pointer%reels[reel].length;
-          })
+          reelsPointer = modifyPointerPostion(reelsPointer);
           gameStatus = GAME_STATUS_CHECK_WIN;
         }
       }
@@ -106,7 +158,19 @@ function draw(){
       }
     }
   } else if (gameStatus == GAME_STATUS_CHECK_WIN){
-    
+    const pointerResult = [
+      modifyPointerPostion(reelsPointer.map((i)=>{ return i+1 })),
+      modifyPointerPostion(reelsPointer.map((i)=>{ return i+2 })),
+      modifyPointerPostion(reelsPointer.map((i)=>{ return i+3 }))
+    ]
+    result = pointerResult.map((row)=>{
+      return row.map((icon,j)=>{
+        return reels[j][icon]
+      })
+    })
+    const patternResult = payoutProcess();
+    console.log(patternResult)
+    gameStatus = GAME_STATUS_INIT
   }
   renderer.render(stage);
   requestAnimationFrame(draw);
@@ -118,11 +182,11 @@ function createReelsComponent(){
     slotSprite[i] = makeReel(i);
     const topCover = new PIXI.Graphics();
     topCover.beginFill(0xFFFFFF);
-    topCover.drawRect(250*(i+1) + 30,-6,128,256);
+    topCover.drawRect(window.innerWidth*0.17*(i+1)-64,window.innerHeight*0.5-448,128,256);
     topCover.endFill();
     const bottomCover = new PIXI.Graphics();
     bottomCover.beginFill(0xFFFFFF);
-    bottomCover.drawRect(250*(i+1) + 30,634,128,256);
+    bottomCover.drawRect(window.innerWidth*0.17*(i+1)-64,window.innerHeight*0.5+192,128,256);
     bottomCover.endFill();
     stage.addChild( slotSprite[i] );
     stage.addChild( topCover );
@@ -149,8 +213,8 @@ function makeReel(reelNumber){
   reel.addChild(tile3);
   reel.addChild(tile4);
   reel.addChild(tile5);
-  reel.x = 250*(reelNumber+1) + 30;
-  reel.y = 250;
+  reel.x = window.innerWidth*0.17*(reelNumber+1)-64;
+  reel.y = window.innerHeight*0.5-320;
   return reel;
 }
 
@@ -185,7 +249,7 @@ function createSpinComponent(){
     buttonSpin.drawRect(0,0,150,100);
     buttonSpin.endFill();
     buttonSpin.interactive = true;
-    buttonSpin.on('mousedown', spinEvent);
+    buttonSpin.on('pointertap', spinEvent);
     buttonSpin.addChild(spinText);
     buttonSpin.position.set(window.innerWidth - 200, window.innerHeight - 100);
     return buttonSpin;
@@ -210,7 +274,7 @@ function createBetComponent(){
     addButton.drawRect(200,0,50,50);
     addButton.endFill();
     addButton.interactive = true;
-    addButton.on('mousedown', changeBetEvent);
+    addButton.on('pointertap', changeBetEvent);
     const addText = new PIXI.Text("+",{fontSize: 30, fill : "white"});
     addText.anchor.set(0.5, 0.5);
     addText.position.set(225,25);
@@ -221,7 +285,7 @@ function createBetComponent(){
     minusButton.drawRect(200,50,50,50);
     minusButton.endFill();
     minusButton.interactive = true;
-    minusButton.on('mousedown', changeBetEvent);
+    minusButton.on('pointertap', changeBetEvent);
     const minusText = new PIXI.Text("-",{fontSize: 30, fill : "white"});
     minusText.anchor.set(0.5, 0.5);
     minusText.position.set(225,75);
@@ -279,6 +343,10 @@ function createWinComponent(){
 function spinEvent(eventData){
     if (gameStatus == GAME_STATUS_INIT || gameStatus == GAME_STATUS_CHECK_WIN){
       console.log('game start')
+      balanceAmount -= BET_AMOUNT[betAmountIndex];
+      balance.children[1].text = `$${formatMoney(balanceAmount)}`;
+      winAmount = 0;
+      win.children[1].text = `$${formatMoney(winAmount)}`;
       randomResult = getRandomFinishPosition();
       adjustPositionStatus = [false,false,false,false,false];
       gameStatus = GAME_STATUS_MOVING;
@@ -312,6 +380,22 @@ function adjustPosition(reel){
   }
 }
 
+function payoutProcess(){
+  return winPattern.map((pattern, patternType)=>{
+    const counts = {}
+    pattern.map((i,j)=>{return result[i][j]}).forEach((x)=>{ counts[x] = (counts[x] || 0)+1 });
+    const mostIcon = Object.keys(counts).reduce((a, b) => counts[a] > counts[b] ? a : b);
+    if (counts[mostIcon] > 2){
+      winAmount = odds[mostIcon][counts[mostIcon]] * BET_AMOUNT[betAmountIndex];
+      balanceAmount += winAmount;
+      balance.children[1].text = `$${formatMoney(balanceAmount)}`;
+      win.children[1].text = `$${formatMoney(winAmount)}`;
+      return true
+    }
+    return false;
+  })
+}
+
 //convert a number to a readable money format (from StackOverFlow)
 function formatMoney(amount, decimalCount = 2, decimal = ".", thousands = ",") {
   try {
@@ -329,6 +413,11 @@ function formatMoney(amount, decimalCount = 2, decimal = ".", thousands = ",") {
   }
 };
 
+function modifyPointerPostion(reelsPointer){
+  return reelsPointer.map((pointer,reel)=>{
+    return pointer%reels[reel].length;
+  })
+}
 
 function getRandomInt(min, max) {
     return Math.floor(Math.random() * (max - min + 1)) + min;
