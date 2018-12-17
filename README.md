@@ -1,9 +1,12 @@
-## this is a simple slots game with some rules
+## A simple slots game with some rules
 
 [Live link](https://kennyliuwenjun.github.io/slots-game/)
 
 Framework:
  - PixiJS
+
+Winning pattern:
+![alt text](screenshot/winning_lines.jpg "init")  
 
 Odds:
 - 1 axe: Three Kind = 250, Four Kind = 500, Five Kind = 1000
@@ -14,3 +17,8 @@ Odds:
 - 6 axe: Three Kind = 80, Four Kind = 250, Five Kind = 600
 - 7 axe: Three Kind = 70, Four Kind = 200, Five Kind = 500
 - 8 axe: Three Kind = 60, Four Kind = 100, Five Kind = 400
+
+## Screenshot
+![alt text](screenshot/main.jpg "init")  
+
+![alt text](screenshot/winning.jpg "winning")
