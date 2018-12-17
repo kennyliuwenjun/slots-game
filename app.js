@@ -119,6 +119,7 @@ PIXI.loader.load(setup);
 
 
 function setup(){
+  whiteBackground();
   spin = createSpinComponent();
   bet = createBetComponent();
   balance = createBalanceComponent();
@@ -180,6 +181,14 @@ function draw(){
   }
   renderer.render(stage);
   requestAnimationFrame(draw);
+}
+
+function whiteBackground(){
+  const background = new PIXI.Graphics();
+  background.beginFill(0xFFFFFF);
+  background.drawRect(0,0,window.innerWidth,window.innerHeight);
+  background.endFill();
+  stage.addChild( background );
 }
 
 //reels
@@ -257,7 +266,7 @@ function createSpinComponent(){
     buttonSpin.interactive = true;
     buttonSpin.on('pointertap', spinEvent);
     buttonSpin.addChild(spinText);
-    buttonSpin.position.set(window.innerWidth - 200, window.innerHeight - 100);
+    buttonSpin.position.set(window.innerWidth - window.innerWidth*0.05-150, window.innerHeight - window.innerHeight*0.15);
     return buttonSpin;
 }
 
@@ -301,7 +310,7 @@ function createBetComponent(){
     bet.addChild(amountText);
     bet.addChild(addButton);
     bet.addChild(minusButton);
-    bet.position.set(50 , window.innerHeight - 100);
+    bet.position.set(window.innerWidth*0.05 , window.innerHeight - window.innerHeight*0.15);
     return bet;
 };
 
@@ -321,7 +330,7 @@ function createBalanceComponent(){
 
     balance.addChild(balanceText);
     balance.addChild(amountText);
-    balance.position.set(window.innerWidth/2 - 125 , window.innerHeight - 100);
+    balance.position.set(window.innerWidth/2 - 125 , window.innerHeight - window.innerHeight*0.15);
     return balance;
 }
 
@@ -337,11 +346,10 @@ function createWinComponent(){
 
     const win = new PIXI.Graphics();
     win.drawRect(0,0,250,100);
-    win.interactive = true;
 
     win.addChild(wineText);
     win.addChild(amountText);
-    win.position.set(window.innerWidth/2 - 125 , 50);
+    win.position.set(window.innerWidth/2 - 125 , window.innerHeight*0.1);
     return win;
 }
 
