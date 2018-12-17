@@ -96,7 +96,7 @@ let gameStatus = GAME_STATUS_INIT;
 let bet,spin,balance,win;
 let balanceAmount = 500;
 let winAmount = 0;
-const spinSpeed = 15;
+const spinSpeed = 20;
 let randomResult;
 let reelsPointer = [0,0,0,0,0];
 let adjustPositionStatus;
@@ -177,6 +177,8 @@ function draw(){
     const patternResult = payoutProcess();
     console.log(patternResult)
     showWiningLines(patternResult);
+    balanceAmount += winAmount;
+    balance.children[1].text = `$${formatMoney(balanceAmount)}`;
     gameStatus = GAME_STATUS_INIT
   }
   renderer.render(stage);
@@ -467,8 +469,6 @@ function payoutProcess(){
     const mostIcon = Object.keys(counts).reduce((a, b) => counts[a] > counts[b] ? a : b);
     if (counts[mostIcon] > 2){
       winAmount += odds[mostIcon][counts[mostIcon]] * BET_AMOUNT[betAmountIndex];
-      balanceAmount += winAmount;
-      balance.children[1].text = `$${formatMoney(balanceAmount)}`;
       win.children[1].text = `$${formatMoney(winAmount)}`;
       return true
     }
@@ -504,5 +504,5 @@ function getRandomInt(min, max) {
 }
 
 function getRandomFinishPosition(){
-  return [getRandomInt(2000,3000), getRandomInt(3000,4000), getRandomInt(4000,5000), getRandomInt(5000,6000), getRandomInt(6000,7000)]
+  return [getRandomInt(4000,5000), getRandomInt(5000,6000), getRandomInt(6000,7000), getRandomInt(7000,8000), getRandomInt(8000,9000)]
 }
