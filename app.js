@@ -36,7 +36,7 @@ const winPattern = [
   [1,1,1,1,1],
   [0,0,0,0,0],
   [2,2,2,2,2],
-  [0,1,2,1,2],
+  [0,1,2,1,0],
   [2,1,0,1,2]
 ]
 
@@ -89,14 +89,14 @@ const odds = {
 };
 
 const slotSprite = [];
-
+const winningLines = [];
 
 let betAmountIndex = 0;
 let gameStatus = GAME_STATUS_INIT;
 let bet,spin,balance,win;
 let balanceAmount = 500;
 let winAmount = 0;
-const spinSpeed = 100;
+const spinSpeed = 15;
 let randomResult;
 let reelsPointer = [0,0,0,0,0];
 let adjustPositionStatus;
@@ -117,12 +117,15 @@ const texture = new PIXI.RenderTexture(
 PIXI.loader.load(setup);
 
 
+
 function setup(){
   spin = createSpinComponent();
   bet = createBetComponent();
   balance = createBalanceComponent();
   win = createWinComponent();
   createReelsComponent();
+  createWinningLines();
+
 
   stage.addChild(spin);
   stage.addChild(bet);
@@ -168,8 +171,11 @@ function draw(){
         return reels[j][icon]
       })
     })
+    console.log(pointerResult);
+    console.log(result)
     const patternResult = payoutProcess();
     console.log(patternResult)
+    showWiningLines(patternResult);
     gameStatus = GAME_STATUS_INIT
   }
   renderer.render(stage);
@@ -214,7 +220,7 @@ function makeReel(reelNumber){
   reel.addChild(tile4);
   reel.addChild(tile5);
   reel.x = window.innerWidth*0.17*(reelNumber+1)-64;
-  reel.y = window.innerHeight*0.5-320;
+  reel.y = window.innerHeight*0.5-192;
   return reel;
 }
 
@@ -339,10 +345,76 @@ function createWinComponent(){
     return win;
 }
 
+function createWinningLines(){
+  const winningLine1 = drawLine(window.innerWidth*0.17, window.innerHeight*0.5-128,window.innerWidth*0.17*5, window.innerHeight*0.5-128,8, 0xffd900);
+  winningLines[0] = winningLine1;
+  stage.addChild(winningLines[0]);
+  const winningLine2 = drawLine(window.innerWidth*0.17, window.innerHeight*0.5,window.innerWidth*0.17*5, window.innerHeight*0.5,8, 0xf44242);
+  winningLines[1] = winningLine2;
+  stage.addChild(winningLines[1]);
+  const winningLine3 = drawLine(window.innerWidth*0.17, window.innerHeight*0.5+128,window.innerWidth*0.17*5, window.innerHeight*0.5+128,8, 0x1aa510);
+  winningLines[2] = winningLine3;
+  stage.addChild(winningLines[2]);
+  const winningLine4_1 = drawLine(window.innerWidth*0.17, window.innerHeight*0.5-128,window.innerWidth*0.17*3, window.innerHeight*0.5+128,8, 0xeaa927);
+  winningLines[3] = winningLine4_1;
+  stage.addChild(winningLines[3]);
+  const winningLine4_2 = drawLine(window.innerWidth*0.17*3, window.innerHeight*0.5+128,window.innerWidth*0.17*5, window.innerHeight*0.5-128,8, 0xeaa927);
+  winningLines[4] = winningLine4_2;
+  stage.addChild(winningLines[4]);
+  const winningLine5_1 = drawLine(window.innerWidth*0.17, window.innerHeight*0.5+128,window.innerWidth*0.17*3, window.innerHeight*0.5-128,8, 0x136d2a);
+  winningLines[5] = winningLine5_1;
+  stage.addChild(winningLines[5]);
+  const winningLine5_2 = drawLine(window.innerWidth*0.17*3, window.innerHeight*0.5-128,window.innerWidth*0.17*5, window.innerHeight*0.5+128,8, 0x136d2a);
+  winningLines[6] = winningLine5_2;
+  stage.addChild(winningLines[6]);
+  hideWiningLines();
+}
+
+function drawLine(fromX,fromY,toX,toY,width,color){
+  const line = new PIXI.Graphics();
+  line.lineStyle(width, color);
+  line.moveTo(fromX, fromY);
+  line.lineTo(toX, toY);
+  return line;
+}
+
+function hideWiningLines(){
+  winningLines.forEach((line)=>{
+    line.visible = false;
+  })
+};
+
+function showWiningLines(patternResult){
+  patternResult.forEach((pattern,index)=>{
+    if(pattern){
+      switch (index) {
+        case 0:
+          winningLines[1].visible = true;
+          break;
+        case 1:
+          winningLines[0].visible = true;
+          break;
+        case 2:
+          winningLines[2].visible = true;
+          break;
+        case 3:
+          winningLines[3].visible = true;
+          winningLines[4].visible = true;
+          break;
+        case 4:
+          winningLines[5].visible = true;
+          winningLines[6].visible = true;
+          break;
+      }
+    }
+  })
+}
+
 //TODO spin click event
 function spinEvent(eventData){
     if (gameStatus == GAME_STATUS_INIT || gameStatus == GAME_STATUS_CHECK_WIN){
       console.log('game start')
+      hideWiningLines();
       balanceAmount -= BET_AMOUNT[betAmountIndex];
       balance.children[1].text = `$${formatMoney(balanceAmount)}`;
       winAmount = 0;
@@ -386,7 +458,7 @@ function payoutProcess(){
     pattern.map((i,j)=>{return result[i][j]}).forEach((x)=>{ counts[x] = (counts[x] || 0)+1 });
     const mostIcon = Object.keys(counts).reduce((a, b) => counts[a] > counts[b] ? a : b);
     if (counts[mostIcon] > 2){
-      winAmount = odds[mostIcon][counts[mostIcon]] * BET_AMOUNT[betAmountIndex];
+      winAmount += odds[mostIcon][counts[mostIcon]] * BET_AMOUNT[betAmountIndex];
       balanceAmount += winAmount;
       balance.children[1].text = `$${formatMoney(balanceAmount)}`;
       win.children[1].text = `$${formatMoney(winAmount)}`;
@@ -424,5 +496,5 @@ function getRandomInt(min, max) {
 }
 
 function getRandomFinishPosition(){
-  return [getRandomInt(10000,20000), getRandomInt(20000,30000), getRandomInt(30000,40000), getRandomInt(40000,50000), getRandomInt(50000,60000)]
+  return [getRandomInt(2000,3000), getRandomInt(3000,4000), getRandomInt(4000,5000), getRandomInt(5000,6000), getRandomInt(6000,7000)]
 }
